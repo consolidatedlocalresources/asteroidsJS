@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <title>Asteroids</title>
     <style></style>
+    <script type="text/javascript" src="./neural-network.js"></script>
 </head>
 
 <body>
@@ -12,33 +13,42 @@
     
     <script>
         const FPS = 30; // frames per second
-        const FRICTION = 0.7; // friction coefficient of space (0 = no frictiom, 1 = lots of friction)
-        const GAME_LIVES = 3; // Starting number of lives
+        const FRICTION = 0.6; // friction coefficient of space (0 = no frictiom, 1 = lots of friction)
+        const GAME_LIVES = 5; // Starting number of lives
         const LASER_DIST = 0.6; // max distance laser can travel as fraction of screen width
         const LASER_EXPLODE_DUR = 0.1; // duration of the lasers explosion in seconds
         const LASER_MAX = 10; // maximum number of lasers on screen at once
         const LASER_SPD = 500; // speed of lasers in pixels per second
-        const ROIDS_JAG = .4; // jaggedness of the asteroids(0 = none, 1 = lots)
+        const ROIDS_JAG = 0.4; // jaggedness of the asteroids(0 = none, 1 = lots)
         const ROIDS_PTS_LGE = 20; // points scored for a large asteroid
         const ROIDS_PTS_MED = 50; // points scored for a medium asteroid
         const ROIDS_PTS_SML = 100; // points scored for a small asteroid
         const ROIDS_NUM = 3; // starting number of asteroids
         const ROIDS_SIZE = 100; // starting size of asteroids in pixels
         const ROIDS_SPD = 50; // max starting speed of asteroids in pixels per second
-        const ROIDS_VERT = 10; // the average number of vertices on each asteroid
+        const ROIDS_VERT = 16; // the average number of vertices on each asteroid
         const SAVE_KEY_SCORE = "highscore"; // save key for local storage of high score
         const SHIP_BLINK_DUR = 0.1; // duration of the ship's blink during invisibility in seconds
         const SHIP_EXPLODE_DUR = 0.3; // duration of the ship explosion
         const SHIP_INV_DUR = 3; // duration of the ship's invisibility in seconds
         const SHIP_SIZE = 30; //ship height in pixels
-        const SHIP_THRUST = 5; // accelerating of the ship in pixels per second per second
+        const SHIP_THRUST = 10; // accelerating of the ship in pixels per second per second
         const SHIP_TURN_SPEED = 360; // turn speed in degrees per second
-        const SHOW_BOUNDING = false; // show or hide collision bounding
-        const SHOW_CENTER_DOT = false; // show or hide ship's center dot
-        const MUSIC_ON = true;
-        const SOUND_ON = true;
         const TEXT_FADE_TIME = 2.5; // text fade time in seconds
         const TEXT_SIZE = 40; // text font height in pixels
+
+        // developer flags
+        const AUTOMATION_ON = true;
+        const MUSIC_ON = false;
+        const SOUND_ON = false;
+        const SHOW_BOUNDING = false; // show or hide collision bounding
+        const SHOW_CENTER_DOT = false; // show or hide ship's center dot
+
+        // neural network parameters
+        const NUM_INPUTS = 2;
+        const NUM_HIDDEN = 5;
+        const NUM_OUTPUTS = 1;
+        const NUM_SAMPLES = 10000;
 
         /** @type {HTMLCanvasElement} */
         let canv = document.getElementById("gameCanvas"); // create the canvas in JavaScript
@@ -57,6 +67,32 @@
         // set up the game parameters
         let level, lives, roids, score, scoreHigh, ship, text, textAlpha;
         newGame();
+
+        // set up the neural network
+        var nn;
+        if (AUTOMATION_ON) {
+            nn = new NeuralNetwork(NUM_INPUTS, NUM_HIDDEN, NUM_OUTPUTS);
+
+            // train the network
+            for (let i = 0; i < NUM_SAMPLES; i++) {
+                // TEST XOR gate logic
+                // 0 0 = 0
+                // 0 1 = 1
+                // 1 0 = 1
+                // 1 1 = 0
+
+                let input0 = Math.round(Math.random());
+                let input1 = Math.round(Math.random());
+                let output = input0 == input1 ? 0 : 1;
+                nn.train([input0, input1], [output]);
+            }
+
+            // test output
+            console.log("0, 0 = " + nn.feedForward([0, 0]).data);
+            console.log("0, 1 = " + nn.feedForward([0, 1]).data);
+            console.log("1, 0 = " + nn.feedForward([1, 0]).data);
+            console.log("1, 1 = " + nn.feedForward([1, 1]).data);
+        }
 
         // set up event handlers
         document.addEventListener("keydown", keyDown);
@@ -124,7 +160,7 @@
             return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
         }
 
-        function drawShip(x, y, a, color = "white") {
+        function drawShip(x, y, a, color = "black") {
 
             ctx.strokeStyle = color;
             ctx.lineWidth = SHIP_SIZE / 20;
@@ -159,7 +195,7 @@
             
         function keyDown(/** @type {KeyboardEvent} */ ev) {
 
-            if (ship.dead) {
+            if (ship.dead || AUTOMATION_ON) {
                 return;
             }
 
@@ -181,7 +217,7 @@
 
         function keyUp(/** @type {KeyboardEvent} */ ev) {
 
-            if (ship.dead) {
+            if (ship.dead || AUTOMATION_ON) {
                 return;
             }
 
@@ -352,17 +388,22 @@
             let blinkOn = ship.blinkNum  % 2 == 0;
             let exploding = ship.explodeTime > 0;
 
+            // use the neural network to rotate the ship and shoot
+            if (AUTOMATION_ON) {
+                // TODO control ship
+            }
+
             // tick the music
             music.tick();
 
             // draw space
-            ctx.fillStyle = "black";
+            ctx.fillStyle = "grey";
             ctx.fillRect(0, 0, canv.width, canv.height);
 
             // draw the asteroids
             let x, y, r, a, vert, offs;
             for (let i = 0; i < roids.length; i++) {
-                ctx.strokeStyle = "slategrey";
+                ctx.strokeStyle = "black";
                 ctx.lineWidth = SHIP_SIZE / 20;
                 
                 // get the asteroids properties
@@ -408,7 +449,7 @@
                 // draw the thruster
                 if (!exploding && blinkOn) {
                     ctx.fillStyle = "red";
-                    ctx.strokeStyle = "yellow";
+                    ctx.strokeStyle = "orange";
                     ctx.lineWidth = SHIP_SIZE / 10;
                     ctx.beginPath();
                     ctx.moveTo( // rear left
@@ -493,7 +534,7 @@
             // draw the lasers 
             for (let i = 0; i < ship.lasers.length; i++) {
                 if (ship.lasers[i].explodeTime == 0) {
-                    ctx.fillStyle = "salmon";
+                    ctx.fillStyle = "black";
                     ctx.beginPath();
                     ctx.arc(ship.lasers[i].x, ship.lasers[i].y, SHIP_SIZE / 15, 0, Math.PI * 2, false);
                     ctx.fill();
